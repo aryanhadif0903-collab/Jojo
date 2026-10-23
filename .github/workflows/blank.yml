@@ -1,0 +1,62 @@
+name: KALI-RDP
+on: workflow_dispatch
+
+jobs:
+  kali-rdp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3600
+    steps:
+      - name: Install Kali + RDP Core
+        run: |
+          sudo apt update
+          # Install docker untuk jalan kan Kali asli
+          sudo apt install -y docker.io
+          sudo docker pull kalilinux/kali-rolling
+          
+          # Buat container Kali yang ada RDP
+          sudo docker run -d --privileged --name kali \
+            --hostname kali-rdp \
+            -p 3389:3389 \
+            kalilinux/kali-rolling sleep infinity
+            
+          sudo docker exec kali bash -c "
+            apt update && apt install -y kali-desktop-xfce xrdp sudo dbus-x11
+            useradd -m YamzOfficial
+            echo 'YamzOfficial:YamzOfficial@123' | chpasswd
+            adduser YamzOfficial ssl-cert
+            adduser YamzOfficial sudo
+            echo 'xfce4-session' > /home/YamzOfficial/.xsession
+            service dbus start
+            service xrdp start
+          "
+
+      - name: Install Tailscale di Host
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          sudo tailscale up --authkey=${{ secrets.TAILSCALE_AUTH_KEY }} --hostname=kali-yamzz
+          TailscaleIP=$(tailscale ip -4)
+          echo "TAILSCALE_IP=$TailscaleIP" >> $GITHUB_ENV
+          echo "KALI_IP=$TailscaleIP"
+
+      - name: Verify RDP Port 3389
+        run: |
+          echo "Menunggu port 3389..."
+          sleep 5
+          nc -zv localhost 3389
+          echo "TCP 3389 OK"
+
+      - name: Maintain Connection - KALI RDP ACTIVE
+        run: |
+          echo "==================================="
+          echo " Address: $TAILSCALE_IP"
+          echo " Port: 3389"
+          echo " Username: YamzOfficial"
+          echo " Password: YamzOfficial@123"
+          echo " OS: Kali Linux Rolling"
+          echo "==================================="
+          echo "Copy Address tu masuk ke RD Client kau yang No Devices tu"
+          while true; do
+            date
+            echo "Kali RDP Active - Port 3389"
+            sleep 300
+          done
